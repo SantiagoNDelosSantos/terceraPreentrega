@@ -85,41 +85,4 @@ export default class ViewsController {
         }
     }
 
-    // CARRITO VISTA:
-
-    // Traer el carrito del usuario en tiempo real: 
-    async getCartByIdV(cartID) {
-        let response = {};
-        try {
-            const cid = cartID
-            if (!cid) {
-                response.status = "error";
-                response.message = `No se proporcionó ningún ID de carrito.`;
-                response.statusCode = 400;
-            } else if (!mongoose.Types.ObjectId.isValid(cid)) {
-                response.status = "error";
-                response.message = `El ID proporcionado no es válido.`;
-                response.statusCode = 400;
-            } else {
-                const responseService = await this.cartService.getCartByIdService(cid);
-                response.status = responseService.status;
-                response.message = responseService.message;
-                response.statusCode = responseService.statusCode;
-                if (responseService.status === "success") {
-                    response.result = responseService.result;
-                };
-                if (responseService.status === "error") {
-                    response.error = responseService.error;
-                };
-            };
-            console.log(response);
-            return response;
-        } catch (error) {
-            console.error('Error:', error.message);
-            res.status(500).json({
-                error: 'Error al consultar el carrito: ' + error.message
-            });
-        };
-    };
-
 };

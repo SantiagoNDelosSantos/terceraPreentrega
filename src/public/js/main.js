@@ -6,6 +6,7 @@ fetch('/api/sessions/current')
 
   .then((response) => response.json())
   .then((data) => {
+    
     // Aquí recibimos los datos del usuario en la variable 'data'
     let user = data;
     

@@ -15,6 +15,7 @@ import msmRouter from './routes/message.router.js';
 import productsRouter from './routes/products.router.js';
 import userRouter from './routes/session.router.js'
 import viewsRouter from "./routes/views.router.js";
+import ticketRouter from "./routes/ticket.router.js";
 
 // Importación de controladores: 
 import ViewsController from './controllers/viewsController.js';
@@ -73,7 +74,7 @@ const expressServer = app.listen(envPort, () => {
 const socketServer = new Server(expressServer);
 
 // Controlador vistas: 
-let viewsController = new ViewsController;
+let viewsController = new ViewsController();
 
 // Eventos y acciones para el servidor Socket.io:
 socketServer.on("connection", async (socket) => {
@@ -85,8 +86,7 @@ socketServer.on("connection", async (socket) => {
 
     // Envío de todos los productos en tiempo real:
     const productsResponse = await viewsController.getAllProductsControllerV();
-    const productList = productsResponse.result;
-    socket.emit('products', productList);
+    socket.emit('products', productsResponse.result);
 
     // Recibo los filtros de main.js en busquedaProducts:
     socket.on('busquedaFiltrada', async (busquedaProducts) => {
@@ -98,26 +98,15 @@ socketServer.on("connection", async (socket) => {
             filtroVal
         } = busquedaProducts;
         const productsResponse = await viewsController.getAllProductsControllerV(limit, page, sort, filtro, filtroVal);
-        const productsFilter = productsResponse.result
-        socket.emit('products', productsFilter);
+        socket.emit('products', productsResponse.result);
     });
 
     // MESSAGES: 
 
     // Enviamos todos los mensajes al usuario:
     const messages = await viewsController.getAllMessageControllerV();
-    const messageResult = messages.result;
-    socket.emit("messages", messageResult);
-
-    // CARRITOS:
-
-    // Enviamos los carritos a los usuarios: 
-    socket.on('cartid', async (cartID) => {
-        const cart = await viewsController.getCartByIdV(cartID);
-        const cartResult = cart.result;
-        socket.emit('cartuser', cartResult);
-    });
-
+    socket.emit("messages", messages.result);
+    
 });
 
 // Middleware para acceder al servidor Socket.io desde las rutas:
@@ -131,4 +120,5 @@ app.use('/api/carts/', cartRouter);
 app.use('/api/chat/', msmRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/sessions', userRouter);
+app.use('/api/tickets', ticketRouter);
 app.use('/', viewsRouter);

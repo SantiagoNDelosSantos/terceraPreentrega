@@ -4,6 +4,9 @@ import CartDAO from "../DAO/mongodb/CartMongo.dao.js";
 // Import de ProductService para acceder a productos desde los carritos:
 import ProductService from "./products.service.js";
 
+// Import TicketsService:
+import TicketService from "./tickets.service.js";
+
 // Clase para el Service de carrito:
 export default class CartService {
 
@@ -11,6 +14,7 @@ export default class CartService {
     constructor() {
         this.cartDao = new CartDAO();
         this.productService = new ProductService();
+        this.ticketService = new TicketService();
     }
 
     // Métodos de CartService:
@@ -111,6 +115,118 @@ export default class CartService {
             response.statusCode = 500;
         }
         return response;
+    }
+
+    // Procesamiento de la compra del usuario:
+    async purchaseProductsInCartService(cartID, purchaseInfo, total, userEmail) {
+        let response = {};
+
+        try {
+            for (const productInfo of purchaseInfo.products) {
+                const databaseProductID = productInfo.databaseProductID; // Obtener el _id del producto en la base de datos
+                const quantityToPurchase = productInfo.quantity;
+
+                // Obtener el producto por su ID en la base de datos
+                const productFromDB = await this.productService.getProductByIdService(databaseProductID);
+
+                if (!productFromDB) {
+                    response.status = 'error';
+                    response.message = `No se encontró ningún producto con el ID ${databaseProductID}.`;
+                    response.statusCode = 404;
+                    return response;
+                }
+
+                // Verificar disponibilidad de stock
+                if (productFromDB.result.stock < quantityToPurchase) {
+                    response.status = 'error';
+                    response.message = `No hay suficiente stock para el producto con el ID ${databaseProductID}.`;
+                    response.statusCode = 400;
+                    return response;
+                }
+
+                // Actualizar el stock del producto
+                const updatedProduct = {
+                    stock: productFromDB.result.stock - quantityToPurchase
+                };
+
+                await this.productService.updateProductService(databaseProductID, updatedProduct);
+
+                // Eliminar el producto del carrito usando el cartProductID
+                await this.deleteProductFromCartService(cartID, productInfo.cartProductID);
+
+            }
+
+            // Crear el ticket con todos los productos de la compra después de verificar y actualizar el stock
+            const ticketInfo = {
+                purchase: userEmail,
+                products: purchaseInfo.products.map(productInfo => ({
+                    product: productInfo.databaseProductID, // Solo el ObjectId del producto
+                    quantity: productInfo.quantity, // Agregar la cantidad
+                    title: productInfo.title // Agregar el título
+                })),
+                amount: total
+            };
+
+            const ticketServiceResponse = await this.ticketService.createTicketService(ticketInfo);
+
+            if (ticketServiceResponse.status == "error") {
+                response.status = 'error';
+                response.message = 'Error al crear el ticket para la compra.';
+                response.error = ticketServiceResponse.error;
+                response.statusCode = 500;
+                return response;
+            }
+
+            const ticketID = ticketServiceResponse.result._id; // Obtener el ID del ticket
+            const addTicketResponse = await this.addTicketToCartService(cartID, ticketID);
+
+            if (addTicketResponse.status === 'error') {
+                response.status = 'error';
+                response.message = `No se pudo agregar el ticket al carrito con el ID ${cartID}.`;
+                response.statusCode = 500;
+                return response;
+            }
+            if (addTicketResponse.status === 'success') {
+                response.status = 'success';
+                response.message = 'Compra procesada exitosamente.';
+                response.result = ticketServiceResponse.result;
+                response.statusCode = 200;
+                return response;
+            }
+
+        } catch (error) {
+            response.status = 'error';
+            response.message = 'Error al procesar la compra - Service: ' + error.message;
+            response.error = error.message;
+            response.statusCode = 500;
+            return response;
+        }
+    }
+
+
+    // Agregar un ticket a un carrito - Service:
+
+    async addTicketToCartService(cartID, ticketID) {
+        let response = {};
+        try {
+            const cartUpdateResponse = await this.cartDao.addTicketToCart(cartID, ticketID);
+            if (!cartUpdateResponse) {
+                response.status = "error";
+                response.message = `No se pudo actualizar el carrito con el ID ${cartID}.`;
+                response.statusCode = 505;
+            } else {
+                response.status = "success";
+                response.message = "Ticket agregado al carrito exitosamente.";
+                response.result = cartUpdateResponse;
+                response.statusCode = 200;
+            }
+        } catch (error) {
+            response.status = "error";
+            response.message = "Error al agregar el ticket al carrito.";
+            response.error = error.message;
+            response.statusCode = 500;
+        }
+        return response
     }
 
     // Eliminar un producto de un carrito: 

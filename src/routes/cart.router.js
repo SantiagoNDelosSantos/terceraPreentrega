@@ -43,6 +43,12 @@ cartRouter.post('/:cid/products/:pid/quantity/:quantity', passport.authenticate(
     res.status(result.statusCode).send(result);
 });
 
+// Procesamiento de la compra del usuario: 
+cartRouter.post('/:cid/purchase', async (req, res) =>{
+    const result = await cartController.purchaseProductsInCartController(req, res);
+    res.status(result.statusCode).send(result);
+})
+
 // Eliminar un producto de un carrito - Router:
 cartRouter.delete('/:cid/products/:pid', async (req, res) => {
     const result = await cartController.deleteProductFromCartController(req, res);

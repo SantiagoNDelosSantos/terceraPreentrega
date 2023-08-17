@@ -212,3 +212,12 @@ padding-bottom: 1em;
   border: 0.5em solid  #bfe4fd;
   border-radius: 5em;
 }
+
+#cierreCompra{
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  width: 50%;
+  margin-left: 25%;
+  margin-right: 25%;
+}
