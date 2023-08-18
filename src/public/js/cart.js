@@ -149,32 +149,6 @@ function updateTotalPrice(products) {
   // DOM boton finalizar compra: 
   const finalizarCompraBtn = document.getElementById('finalizarCompraBtn');
   finalizarCompraBtn.addEventListener('click', async () => {
-    // Verificar si hay productos sin stock
-    const productsWithoutStock = products.filter(product => product.product.stock === 0);
-
-    if (productsWithoutStock.length > 0) {
-      Swal.fire({
-        title: 'Advertencia',
-        text: 'Tu carrito tiene productos sin stock. Debes eliminar estos productos del carrito antes de continuar con la compra.',
-        icon: 'warning',
-        confirmButtonText: 'Aceptar',
-      });
-      return; // No proceder con la compra si hay productos sin stock
-    }
-
-    // Verificar si hay productos con cantidad mayor al stock
-    const productsWithInvalidQuantity = products.filter(product => product.quantity > product.product.stock);
-
-    if (productsWithInvalidQuantity.length > 0) {
-      Swal.fire({
-        title: 'Advertencia',
-        text: 'Algunos productos en tu carrito tienen cantidades mayores al stock disponible, por ende no será posible procesar la compra. Ajusta las unidades a comprar y luego podrás continuar con el cierre de la compra.',
-        icon: 'warning',
-        confirmButtonText: 'Cerrar',
-      });
-      return; // No proceder con la compra si hay cantidades inválidas
-    }
-
     // Mostrar SweetAlert de confirmación
     const confirmationResult = await Swal.fire({
       title: 'Confirmar compra',
@@ -187,7 +161,7 @@ function updateTotalPrice(products) {
 
     if (confirmationResult.isConfirmed) {
       // Continuar con la compra
-      processPurchase(products, totalPrice);
+      processPurchase(products);
 
       // Mostrar SweetAlert de procesamiento
       const processingAlert = await Swal.fire({
@@ -199,11 +173,11 @@ function updateTotalPrice(products) {
         timerProgressBar: true,
         allowOutsideClick: false
       });
-
-      // Aquí podrías redirigir al usuario a la página de boleta de compra u otra acción
+      
     }
   });
 }
+
 
 // Función para eliminar un producto del carrito
 function deleteToCart(products, productID) {
@@ -230,7 +204,7 @@ function deleteToCart(products, productID) {
     });
 }
 
-function processPurchase(products, totalPrice) {
+function processPurchase(products) {
   fetch('/api/sessions/current')
     .then(response => response.json())
     .then(data => {
@@ -243,7 +217,8 @@ function processPurchase(products, totalPrice) {
           cartProductID: product._id, // _id del producto en carrito
           databaseProductID: product.product._id, // _id del producto en la base de datos
           quantity: product.quantity,
-          title: product.product.title // Título del producto
+          title: product.product.title, // Título del producto
+          price: product.product.price,
         };
       });
 
@@ -251,7 +226,6 @@ function processPurchase(products, totalPrice) {
       const purchaseData = {
         cartID: cartID,
         products: productsToSend, // Usar el array modificado
-        totalPrice: totalPrice,
         userEmailAddress
       };
 

@@ -157,7 +157,6 @@ async purchaseProductsInCartController(req, res) {
         const cartID = req.params.cid;
         const purchaseInfo = req.body; // La nueva estructura de datos
         const products = purchaseInfo.products;
-        const totalPrice = purchaseInfo.totalPrice;
         const userEmail = purchaseInfo.userEmailAddress;
 
         if (!cartID) {
@@ -171,10 +170,6 @@ async purchaseProductsInCartController(req, res) {
         } else if (!purchaseInfo || !Array.isArray(products) || products.length === 0) {
             response.status = "error";
             response.message = `No se enviaron los productos a comprar o el formato es inválido.`;
-            response.statusCode = 400;
-        } else if (typeof totalPrice !== 'number' || totalPrice <= 0) {
-            response.status = "error";
-            response.message = `El precio total debe ser un número válido y mayor que cero.`;
             response.statusCode = 400;
         } else if (!userEmail) { // Nueva validación para el correo electrónico
             response.status = "error";
@@ -191,7 +186,7 @@ async purchaseProductsInCartController(req, res) {
                 }
             }
             // Si todas las validaciones pasan, llamar al servicio
-            const responseService = await this.cartService.purchaseProductsInCartService(cartID, purchaseInfo, totalPrice, userEmail);
+            const responseService = await this.cartService.purchaseProductsInCartService(cartID, purchaseInfo, userEmail);
 
             response.status = responseService.status;
             response.message = responseService.message;
@@ -209,7 +204,7 @@ async purchaseProductsInCartController(req, res) {
     } catch (error) {
         console.error('Error:', error.message);
         response.status = "error";
-        response.message = "Error al procesar la compra: " + error.message;
+        response.message = "Error al procesar la compra - Controller: " + error.message;
         response.error = error.message;
         response.statusCode = 500;
         return res.status(response.statusCode).json(response);

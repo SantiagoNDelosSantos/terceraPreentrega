@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-
 import { v4 as uuidv4 } from 'uuid';
 
 const collection = "ticket";
@@ -16,24 +15,37 @@ const productSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
-    }
+    }, 
+    price: {
+        type: Number,
+        required: true,
+    },
 });
 
 const ticketSchema = new mongoose.Schema({
+
     code: {
         type: String,
         default: uuidv4, 
     },
+
     purchase_datetime: {
         type: Date,
         default: Date.now,
     },
-    products: [productSchema], // Cambio aquí
-    amount: {
-        type: Number,
-    },
+
+    // Productos que se pudieron comprar
+    successfulProducts: [productSchema],
+
+    // Productos que no se pudieron comprar
+    failedProducts: [productSchema],     
+
     purchase: {
         type: String,
+    },
+
+    amount: {
+        type: Number,
     },
 });
 

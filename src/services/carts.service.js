@@ -118,31 +118,48 @@ export default class CartService {
     }
 
     // Procesamiento de la compra del usuario:
-    async purchaseProductsInCartService(cartID, purchaseInfo, total, userEmail) {
+    async purchaseProductsInCartService(cartID, purchaseInfo, userEmail) {
         let response = {};
 
         try {
+            const successfulProducts = [];
+            const failedProducts = [];
+            let totalAmount = 0; 
+
             for (const productInfo of purchaseInfo.products) {
+
                 const databaseProductID = productInfo.databaseProductID; // Obtener el _id del producto en la base de datos
                 const quantityToPurchase = productInfo.quantity;
 
                 // Obtener el producto por su ID en la base de datos
                 const productFromDB = await this.productService.getProductByIdService(databaseProductID);
 
+                // Agregar al array de productos fallidos (No encontrados):
                 if (!productFromDB) {
-                    response.status = 'error';
-                    response.message = `No se encontró ningún producto con el ID ${databaseProductID}.`;
-                    response.statusCode = 404;
-                    return response;
+                    failedProducts.push(productInfo);
+                    continue;
                 }
 
-                // Verificar disponibilidad de stock
+                // Agregar al array de productos fallidos (Stock menor al quantity):
                 if (productFromDB.result.stock < quantityToPurchase) {
-                    response.status = 'error';
-                    response.message = `No hay suficiente stock para el producto con el ID ${databaseProductID}.`;
-                    response.statusCode = 400;
-                    return response;
+                    failedProducts.push(productInfo);
+                    continue;
                 }
+
+                if (productFromDB.result.stock >= quantityToPurchase) {
+                    successfulProducts.push(productInfo);
+                    totalAmount += productInfo.price * quantityToPurchase;
+                    continue;
+                }
+
+            }
+
+            for (const productInfo of successfulProducts) {
+                const databaseProductID = productInfo.databaseProductID; // Obtener el _id del producto en la base de datos
+                const quantityToPurchase = productInfo.quantity;
+
+                // Obtener el producto por su ID en la base de datos
+                const productFromDB = await this.productService.getProductByIdService(databaseProductID);
 
                 // Actualizar el stock del producto
                 const updatedProduct = {
@@ -153,18 +170,26 @@ export default class CartService {
 
                 // Eliminar el producto del carrito usando el cartProductID
                 await this.deleteProductFromCartService(cartID, productInfo.cartProductID);
-
             }
+
+
 
             // Crear el ticket con todos los productos de la compra después de verificar y actualizar el stock
             const ticketInfo = {
-                purchase: userEmail,
-                products: purchaseInfo.products.map(productInfo => ({
-                    product: productInfo.databaseProductID, // Solo el ObjectId del producto
-                    quantity: productInfo.quantity, // Agregar la cantidad
-                    title: productInfo.title // Agregar el título
+                successfulProducts: successfulProducts.map(productInfo => ({
+                    product: productInfo.databaseProductID, 
+                    quantity: productInfo.quantity, 
+                    title: productInfo.title, 
+                    price: productInfo.price,
                 })),
-                amount: total
+                failedProducts: failedProducts.map(productInfo => ({
+                    product: productInfo.databaseProductID,
+                    quantity: productInfo.quantity,
+                    title: productInfo.title, 
+                    price: productInfo.price,
+                })),
+                purchase: userEmail,
+                amount: totalAmount
             };
 
             const ticketServiceResponse = await this.ticketService.createTicketService(ticketInfo);
@@ -202,7 +227,6 @@ export default class CartService {
             return response;
         }
     }
-
 
     // Agregar un ticket a un carrito - Service:
 
